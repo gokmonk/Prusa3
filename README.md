@@ -1,8 +1,23 @@
 Prusa3
 ======
 
-Just a few changes I have done to Prusa i3 parts 3D printer.
+This is my fork of Misan's modified compact extruder, specifically tailored for my setup, which includes:
 
-I did a fork and deleted it because I did not want people to get older parts when I was just making some changes to a few parts. 
+ - 3mm filament
+ - 11.5/10.5mm "Raptor" drive gear from QU-BD.com
+ - 2engineers 50:1 geared 1Nm stepper motor
+ - A pretty long TORLON hot end
+ - I also use an upside-down Prusa3/mini/x-carriage.stl to get extra build height
 
-This repo contains just these parts I have changed or fixed for a Prusa i3 single_plate. Use them at your own risk as I may not be updating them once I have created them.
+The default settings are good for my 10.5mm diameter Raptor gear, so you'd want to adjust from there.
+
+I made several changes to compact-extruder-2engineers.scad almost worth a pull request:
+
+ - Consolidated code into loops where possible
+ - Made the filament path distance configurable (i.e., drive gear radius plus 3mm/2)
+ - Centered the idler on the gear for a better grip
+ - Added build flags to render any set of parts -- or the whole assembly
+
+My fork is sparse because Misan's fork is sparse, and we like it that way.
+
+This repo contains my fork which is a work in progress. I'd like to chop down the extruder to a minimum size and complexity, and the idler needs some adjustment also.
