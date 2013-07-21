@@ -13,7 +13,7 @@ include <configuration.scad>
 
 $fn = 18;
 
-draw_assembled = false;
+draw_assembled = true;
 
 draw_extruder = false;
 draw_idler = true;
@@ -49,13 +49,37 @@ holder_thickness = 10;
 holder_gap = 1.5;
 holder_hole_dist = 22;
 
+idler_thickness = 8 + 3;
+idler_bearing_offset = 2;
+
 module motor_dummy(){
-  translate([-22,-22,-5]) %cube([44,44,5]);
-	translate([18,18,-5]) %cylinder(r=2, h=24);
-	translate([18,-18,-5]) %cylinder(r=2, h=24);
-	translate([-18,18,-5]) %cylinder(r=2, h=24);
-	translate([-18,-18,-5]) %cylinder(r=2, h=24);
-	translate([-22+2.5+10,0,-5]) %cylinder(r=2.5, h=7);
+  mw = 43.8;
+  hd = 36.0;
+  ax = 11.675; ay = 22.025;
+  gr = 10.5/2; gh = 11.0;
+
+  // Flat Part
+  translate([0,0,-0.5]) difference() {
+    cube([mw,mw,1], center=true);
+    for (x=[-1,1]) translate([x*hd/2,hd/2]) cylinder(r=1.6, h=2.1, center=true);
+  }
+  // M3 Bolts
+  for (x=[-1,1]) translate([x*hd/2,-hd/2,-1]) {
+    translate([0,0,12.5]) cylinder(r=1.55, h=25, center=true);
+    translate([0,0,-0.75]) cylinder(r1=2,r2=2.5, h=1.5, center=true);
+  }
+
+  // Motor body
+  for (p=[[42.6,15.5],[42,36],[10,37],[2,37.5]])
+    translate([0,0,-p[1]/2]) cylinder(r=p[0]/2, h=p[1], center=true);
+
+  // Axle and Gear
+  translate([-mw/2+ay,-mw/2+ax]) {
+    // Axle
+    translate([0,0,7]) color([0.8,0.8,0.8]) cylinder(r=2.5, h=14, center=true);
+    // Gear
+    translate([0,0,gh/2+3]) color([1,0.75,0]) cylinder(r=gr, h=gh, $fn=36, center=true);
+  }
 }
 
 module extruder_base(){
@@ -131,7 +155,7 @@ module extruder_holes() {
 
   // Idler mounting holes
   translate([11,25-2,11]){
-    for (y=[-15,15]) for (z=[-5,5]) {
+    for (y=[-15,15], z=[-5,5]) {
       // Nut traps
       translate([-30,y,z]) rotate([0,90,0]) rotate([0,0,30]) cylinder(r=3.3, h=30, $fn=6);
       // Screws
@@ -144,20 +168,31 @@ module extruder_holes() {
 }
 
 module extruder_idler_base() {
- translate([0.25,0,0]) cube([19.5,40,8+3]);
+  roundness = 4;
+  translate([10,20,idler_thickness/2]) {
+    minkowski() {
+      cube([11.5,32,idler_thickness], center=true);
+      cylinder(r=roundness,h=0.01,$fn=12,center=true);
+    }
+  }
 }
 
 module extruder_idler_holes(){
- translate([10,20,(8+3)/2]){
-  // Main cutout
-  cube([10,21,12], center=true);
-  // round cutout too
-  rotate([0,90,0]) cylinder(r=11.5, h=10, center=true);
-  // Idler shaft
-  rotate([0,90,0]) cylinder(r=4.1, h=21, center=true);
-  // Screw holes
-  for (x=[-1,1],y=[-1,1]) translate([x*5,y*15,0]) cylinder(r=2.2, h=12, center=true);
- }
+  axle_inset = 2;
+  translate([10,20,idler_thickness/2]){
+    // Main cutout
+    // cube([10.5,21,12], center=true);
+    translate([0,0,idler_bearing_offset]) {
+      // round cutout too
+      rotate([0,90,0]) cylinder(r=11.5, h=10.5, center=true);
+      // Idler shaft
+      rotate([0,90,0]) cylinder(r=4.1, h=19.5-axle_inset, center=true);
+      if (idler_bearing_offset > 0)
+        translate([0,0,4.1]) cube([19.5-axle_inset,7.5,8.2], center=true);
+    }
+    // Screw holes
+    for (x=[-1,1],y=[-1,1]) translate([x*5,y*15,0]) cylinder(r=2.2, h=12, center=true);
+  }
 }
 
 
@@ -247,12 +282,10 @@ module prusa_compact_adapter() {
       }
     }
     // Mount Screw Holes
-    for (x=(rear_mounting ? [-1,1] : [-1])) {
-      for (y=[-1,1]) {
-        translate([mount_x + b_dist * x, 12 * y, mount_z]) {
-          cylinder(r=hole_3mm, h=mount_thickness+1, $fn=12, center=true);
-          translate([0,0,x*mount_thickness/2]) cylinder(r=hole_3mm + 1.75, h=4, $fn=18, center=true);
-        }
+    for (x=(rear_mounting ? [-1,1] : [-1]), y=[-1,1]) {
+      translate([mount_x + b_dist * x, 12 * y, mount_z]) {
+        cylinder(r=hole_3mm, h=mount_thickness+1, $fn=12, center=true);
+        translate([0,0,x*mount_thickness/2]) cylinder(r=hole_3mm + 1.75, h=4, $fn=18, center=true);
       }
     }
     // Top screw hole - oh fun
@@ -329,17 +362,17 @@ if (draw_extruder || draw_assembled) {
 
 if (draw_motor || draw_assembled) {
   if (draw_assembled) {
-    translate([-25,-2,0]) motor_dummy();
+    translate([-25,-2,0]) %motor_dummy();
   }
   else {
-    translate([-2.5,25,0]) motor_dummy();
+    translate([-2.5,25,0]) %motor_dummy();
   }
 }
 
 if (draw_idler || draw_assembled) {
   if (draw_assembled) {
-    translate([-5,0,21])
-      rotate([0,90,90])
+    translate([-5,12,1])
+      rotate([0,-90,90])
         idler();
   }
   else {
