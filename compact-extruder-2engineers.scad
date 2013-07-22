@@ -20,7 +20,6 @@ draw_extruder = true;
 draw_idler = true;
 draw_mount = true;
 draw_holder = true;
-draw_motor = false;
 
 // Use these settings to merge the extruder with the platform part
 // This saves material and exposes more of the cold end
@@ -50,7 +49,7 @@ part_thickness = 10;
 extruder_depth = 24;
 extra_depth = 0;
 
-groove_height = 3.15;
+groove_height = 0; // 3.15;
 groove_depth = 1.45;
 
 mount_length = 40;
@@ -84,7 +83,7 @@ module draw_everything() {
     }
   }
 
-  if (draw_motor || draw_assembled) {
+  if (draw_assembled) {
     if (draw_assembled) {
       translate([-25,-2.5,0]) %motor_dummy();
     }
@@ -100,18 +99,17 @@ module draw_everything() {
           idler();
     }
     else {
-      if (draw_mount) {
+      if (draw_mount)
         translate([draw_holder?40:22,-15]) idler();
-      }
       else
-        translate([-5,4]) rotate([0,0,90]) idler();
+        translate([-5,draw_holder?20:2]) rotate([0,0,90]) idler();
     }
   }
 
   if (draw_mount || draw_assembled) {
     color([1,1,1]) {
       if (draw_assembled) {
-        translate([-67.5,-12,12])
+        translate([-67.5+platform_y_offset,-12,12])
           prusa_compact_adapter(mode = merge_extruder ? 2 : 1);
       }
       else {
@@ -128,8 +126,15 @@ module draw_everything() {
         prusa_adapter_holder();
     }
     else {
-      translate([draw_mount ? 30 : 0,0,22])
-        prusa_adapter_holder();
+      if (draw_extruder && !draw_mount) {
+        translate([-15,10,22])
+          rotate([0,0,90])
+            prusa_adapter_holder();
+      }
+      else {
+        translate([draw_mount ? 30 : 0,0,22])
+          prusa_adapter_holder();
+      }
     }
   }
 
@@ -371,7 +376,7 @@ module prusa_compact_adapter(mode=1) {
       if (do_platf && !merge_extruder) {
         // Angled Ends
         for (y=[-25.6,27.6]) {
-          translate([merge_extruder ? 0 : -platform_y_offset,y,-extra_depth/2]) rotate([0,0,45]) cube([17,17,extruder_depth+extra_depth], center=true);
+          translate([(merge_extruder ? 0 : -platform_y_offset),y,-extra_depth/2]) rotate([0,0,45]) cube([17,17,extruder_depth+extra_depth], center=true);
         }
       }
       // Top Screw Mount Plate
@@ -435,6 +440,7 @@ module prusa_compact_adapter(mode=1) {
       }
 
       if (do_back) {
+
         // Mount Screw Holes
         for (x=(rear_mounting ? [-1,1] : [-1]), y=[-1,1]) {
           translate([mount_x + b_dist * x, 12 * y, mount_z]) {
@@ -447,7 +453,13 @@ module prusa_compact_adapter(mode=1) {
           cylinder(r=hole_3mm, h=mount_thickness+1, $fn=12, center=true);
           translate([0,0,-mount_thickness/2]) cylinder(r=hole_3mm * 2, h=6, $fn=18, center=true);
         }
-      }
+        // // Save material
+        // for(y=[-1,1]) translate([0,2.4+y*mount_w/2,15]) cube([mount_length,6,mount_thickness+1], center=true);
+        // translate([21,10,15]) rotate([0,0,10]) cube([10,30,mount_thickness+1], center=true);
+        // translate([14,25,15]) rotate([0,0,54]) cube([10,15,mount_thickness+1], center=true);
+        translate([(merge_extruder ? -8 : -16)-platform_y_offset,0,15]) cube([22.01,12,mount_thickness+1], center=true);
+
+      } // do_back
 
     } // union
 
