@@ -25,3 +25,11 @@ hotend_mount = 1;
 
 hotend_groovemount_depth = 10;
 hotend_groovemount_diameter = 16;
+
+// Standard screws with slightly wider holes
+radius3mm = 1.5;
+radius4mm = 2.0;
+hole_3mm = radius3mm + 0.25;
+hole_4mm = radius4mm + 0.25;
+
+radius608zz = 11;
