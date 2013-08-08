@@ -185,7 +185,7 @@ module draw_everything() {
   }
 
   // FAN SIDE MOUNT
-  if (draw_fan_sidemount || draw_assembled) {
+  if (draw_fan_sidemount) {
     color([0.5,1,0.25]) {
       if (draw_assembled) {
         translate([-59.5+platform_y_offset,-12+(do_chop?5+filament_path_offset:0),-clamp_thickness - 1 - 2.5]) {
