@@ -25,16 +25,16 @@ draw_extruder = true;
 draw_idler = true;
 draw_clamp = true;
 draw_mount = true;
+draw_fan_mount = true;
+draw_fan_duct = true;   // for the hinged fan at about 35°
+
+draw_fan_sidemount = false; // incomplete
 
 // V2 has a hinged idler option
 hinged_idler = true;
 idler_hinge_width = 10; // width of the centered hinge
 idler_hinge_gap = 0.2;  // gap around the hinge
 idler_hinge_radius = radius3mm + 3.0; // radius of the mounts on the extruder
-
-merge_amount = 8;       // how much the platform area moves up into the extruder
-merge_chopchop = true;  // minimize the base of the extruder
-merge_endspace = 4.7;   // space above the groove in the hotend
 
 // Extra V1-only options
 rear_mounting = false;   // V1 can have rear-mounting holes spaced 24mm apart
@@ -55,29 +55,42 @@ platform_height = 10;
 extruder_body_width = 23;
 extruder_depth = 24; // front-to-back extruder size
 
-groove_height = 3;
-groove_depth = 1;
+// V2 groove dimensions
+v2_above_groove_mm = 4.7;   // space above the hotend groove
+v2_groove_height = 3;          // height of the groove
+v2_groove_depth = 1;           // depth of the groove
 
 mount_length = 40;
 mount_thickness = 6;
 corner_radius = extraptor_v2 ? 10 : 15;
 platform_y_offset = 0;
 
-clamp_hole_dist = extraptor_v2 ? 24 : 22;
-clamp_thickness = 10;
-clamp_gap = 1.5;       // This gives room to tighten the clamp
-
+//
 // Idler options
+//
 idler_w = 20;
 idler_h = 40;
 idler_axle_inset = 2.6;
 idler_thickness = 8 + 3;  // room for an M8 rod and a little more
 idler_bearing_offset = 3; // how far to move the rod off-center, adding a groove
 
+//
+// Clamp options
+//
+clamp_hole_dist = extraptor_v2 ? 24 : 22;
+clamp_thickness = 10;
+clamp_gap = 1.5;       // This gives room to tighten the clamp
+
+//
+// Experimental
+//
+v2_merge_amount = 8;       // how much the platform area moves up into the extruder
+v2_chopchop = true;  // minimize the base of the extruder
+
 // Shorthand and calculated variables
 ed = extruder_depth;
 hotend_r = hotend_groovemount_diameter / 2;
-do_chop = extraptor_v2 && merge_chopchop;
+do_chop = extraptor_v2 && v2_chopchop;
 do_hinge = extraptor_v2 && hinged_idler;
 motor_lower = extraptor_v2 ? 6 : 1.5;
 motor_lowness = (rear_mounting && motor_lower > 1.5) ? 1.5 : motor_lower;
@@ -110,7 +123,7 @@ module draw_everything() {
   // CLAMP
   if (draw_clamp || draw_assembled) {
     if (draw_assembled) {
-      translate([-67.5+(extraptor_v2 ? merge_amount : 0),-12,12])
+      translate([-67.5+(extraptor_v2 ? v2_merge_amount : 0),-12,12])
         prusa_adapter_clamp();
     }
     else {
@@ -148,6 +161,58 @@ module draw_everything() {
           %cube(1, center=true);
           rotate([0,180,0])
             prusa_compact_adapter(mode = extraptor_v2 ? 2 : 1);
+        }
+      }
+    }
+  }
+
+  // FAN MOUNT
+  if (draw_fan_mount || draw_assembled) {
+    color([1,0,0.25]) {
+      if (draw_assembled) {
+        translate([-59.5+platform_y_offset,-12+(do_chop?5+filament_path_offset:0),-clamp_thickness - 1 - 2.5]) {
+          fan_mount();
+        }
+      }
+      else {
+        translate(draw_extruder ? [-30,47,0] : [0, draw_idler ? 37 : 30,0]) {
+          %cube(1, center=true);
+          translate([0,12,1]) rotate([0,180,90]) fan_mount(mode=1);
+          translate([0,0,1]) rotate([0,-35,90]) fan_mount(mode=2);
+        }
+      }
+    }
+  }
+
+  // FAN SIDE MOUNT
+  if (draw_fan_sidemount || draw_assembled) {
+    color([0.5,1,0.25]) {
+      if (draw_assembled) {
+        translate([-59.5+platform_y_offset,-12+(do_chop?5+filament_path_offset:0),-clamp_thickness - 1 - 2.5]) {
+          fan_sidemount();
+        }
+      }
+      else {
+        translate(draw_extruder ? [-30,47,0] : [0, draw_idler ? 37 : 30,0]) {
+          %cube(1, center=true);
+          translate([0,12,1]) rotate([0,180,90]) fan_sidemount();
+        }
+      }
+    }
+  }
+
+  // FAN DUCT, SIDE OR FAN-MOUNTED
+  if (draw_fan_duct || draw_assembled) {
+    color([0.25,0.25,1]) {
+      if (draw_assembled) {
+        translate([-103.5+platform_y_offset,-12+(do_chop?5+filament_path_offset:0),-clamp_thickness - 1 - 2.5 + 11.5])
+          rotate([0,35,0])
+            fan_duct();
+      }
+      else {
+        translate([moffs-(draw_fan_mount&&draw_mount ? 15 : 25),draw_mount?50:10,0.75]) {
+          %cube(1, center=true);
+          rotate([0,0,0]) fan_duct();
         }
       }
     }
@@ -313,8 +378,8 @@ module extruder_holes() {
 module extruder_supports() {
   support_wall = 0.7;
   wall_length = idler_hinge_width + idler_hinge_gap * 2;
-  if (extraptor_v2 && groove_height > 0) {
-    translate([16 + filament_path_offset, 52.5 + merge_endspace + (groove_height/2), 11 + 0.3/2]) cube([16,groove_height,0.3], center=true);
+  if (extraptor_v2 && v2_groove_height > 0) {
+    translate([16 + filament_path_offset, 52.5 + v2_above_groove_mm + (v2_groove_height/2), 11 + 0.3/2]) cube([16,v2_groove_height,0.3], center=true);
   }
   if (do_hinge && !draw_assembled) {
     translate([30,48-0.4,11]) {
@@ -332,7 +397,7 @@ module extruder_supports() {
 module hollow_cylinder(r1=1,r2=1,h=1,center=false) {
   difference() {
     cylinder(r=r1,h=h,center=center);
-    cylinder(r=r2,h=h+0.01,center=center);
+    cylinder(r=r2,h=h+0.05,center=center);
   }
 }
 
@@ -375,10 +440,7 @@ module extruder_idler_base() {
   roundness = 4;
   translate([idler_w/2,idler_h/2+(do_hinge ? motor_lowness/2 : motor_lowness),idler_thickness/2]) {
     // translate([0,1]) cube([1,10.5,50], center=true);
-    minkowski() {
-      cube([idler_w-roundness*2,idler_h-roundness*2-(do_hinge ? motor_lowness : 0),idler_thickness], center=true);
-      cylinder(r=roundness,h=0.01,$fn=12,center=true);
-    }
+    rounded_cube([idler_w,idler_h-(do_hinge ? motor_lowness : 0),idler_thickness], r=roundness, center=true);
     if (do_hinge) {
       translate([0,(idler_h+10-motor_lowness)/2]) {
         difference() {
@@ -476,15 +538,12 @@ module prusa_compact_adapter(mode=1) {
     if (do_solid) union() {
 
       if (do_platf) // draw platform modes 0,1
-        translate([(extraptor_v2 ? merge_amount : -platform_y_offset),0,0]) color([0,0,1]) cube([platform_height,mount_w,ed], center=true);
+        translate([(extraptor_v2 ? v2_merge_amount : -platform_y_offset),0,0]) color([0,0,1]) cube([platform_height,mount_w,ed], center=true);
 
       // draw the back part
       if (do_back) {
         translate([mount_x,0,mount_z]) {
-          minkowski() {
-            cube([mount_length-corner_radius*2,mount_w-corner_radius*2-(do_chop?4:0),mount_thickness], center=true);
-            cylinder(r=corner_radius,h=0.01,$fn=36,center=true);
-          }
+          rounded_cube([mount_length, mount_w-(do_chop?4:0), mount_thickness], r=corner_radius, center=true, $fn=36);
         }
       }
       if (do_platf && !extraptor_v2) {
@@ -505,7 +564,7 @@ module prusa_compact_adapter(mode=1) {
 
     union() {
 
-      if (do_platf) translate([(extraptor_v2 ? merge_amount : -platform_y_offset),0,0]) {
+      if (do_platf) translate([(extraptor_v2 ? v2_merge_amount : -platform_y_offset),0,0]) {
         for (y=[-1,1]) {
           // platform screw holes
           if (!rear_mounting && !extraptor_v2) {
@@ -521,25 +580,25 @@ module prusa_compact_adapter(mode=1) {
         translate([0,platform_height/2+filament_path_offset,-1.0]) {
           // Groove - Narrow Part
           translate([0,0,-7.5]) {
-            cube([10.01,hotend_groovemount_diameter-groove_depth*2,15], center=true);
+            cube([10.01,hotend_groovemount_diameter-v2_groove_depth*2,15], center=true);
             translate([0,0,6.5-10/2]) cube([10.01,hotend_groovemount_diameter,10.01], center=true);
           }
           // Hotend Hole - Remove Narrow
-          rotate([0,90,0]) cylinder(r=hotend_r-groove_depth, h=10.01, $fn=72, center=true);
+          rotate([0,90,0]) cylinder(r=hotend_r-v2_groove_depth, h=10.01, $fn=72, center=true);
           translate([0,0,-7.5]) cube([10.01,hotend_groovemount_diameter+0.3,15], center=true);
           // Remove Non-Groove Parts
           if (extraptor_v2) {
             // Hotend hole - Wider part, remove where the groove isn't
-            translate([-groove_height-merge_endspace,0,0]) {
+            translate([-v2_groove_height-v2_above_groove_mm,0,0]) {
               rotate([0,90,0]) cylinder(r=hotend_r, h=10.01, $fn=72, center=true);
             }
             // Remove the area above the groove
-            translate([5-merge_endspace/2,0,0])
-              rotate([0,90,0]) cylinder(r=hotend_r, h=merge_endspace, $fn=72, center=true);
+            translate([5-v2_above_groove_mm/2,0,0])
+              rotate([0,90,0]) cylinder(r=hotend_r, h=v2_above_groove_mm, $fn=72, center=true);
           }
           else {
             // Make the groove flush with the top for non-merged
-            translate([-groove_height,0,0]) {
+            translate([-v2_groove_height,0,0]) {
               rotate([0,90,0]) cylinder(r=hotend_r, h=10.01, $fn=72, center=true);
             }
           }
@@ -547,7 +606,7 @@ module prusa_compact_adapter(mode=1) {
       } // do_platf
 
       // Front-to-back long mounting holes & traps
-      translate([ (extraptor_v2 ? merge_amount - (do_back ? platform_y_offset : 0) : -platform_y_offset),
+      translate([ (extraptor_v2 ? v2_merge_amount - (do_back ? platform_y_offset : 0) : -platform_y_offset),
                   platform_height/2+filament_path_offset-(do_chop&&mode==2?5+filament_path_offset:0),
                   5]) {
         for (y=[-1,1]) {
@@ -582,11 +641,20 @@ module prusa_compact_adapter(mode=1) {
 
   } // difference
 
-  // Front-to-back long screws for show
-  if (draw_assembled && do_back)
-    translate([(extraptor_v2?merge_amount:0)-platform_y_offset, platform_height/2+filament_path_offset-(do_chop?5+filament_path_offset:0), 5])
-      for (y=[-1,1])
-        translate([0,y*clamp_hole_dist/2,12]) %bolt(h=45);
+  if (draw_assembled) {
+    // Front-to-back long screws for show
+    if (do_back)
+      translate([(extraptor_v2?v2_merge_amount:0)-platform_y_offset, platform_height/2+filament_path_offset-(do_chop?5+filament_path_offset:0), 5])
+        for (y=[-1,1])
+          translate([0,y*clamp_hole_dist/2,11]) %bolt(h=45);
+
+    // Nozzle Cylinder
+    if (do_platf && extraptor_v2)
+      translate([v2_merge_amount+5-v2_above_groove_mm/2-50,platform_height/2+filament_path_offset,-1.0]) {
+        rotate([0,90,0]) %cylinder(r=hotend_r, h=v2_above_groove_mm + 50, $fn=36);
+      }
+
+  }
 
 } // prusa_compact_adapter
 
@@ -618,17 +686,17 @@ module prusa_adapter_clamp() {
     // Groove mount
     translate([0,platform_height/2+filament_path_offset,-1.0]) {
       // Center Hole - Narrow Part, remove full height
-      rotate([0,90,0]) cylinder(r=hotend_r-groove_depth, h=10.01, $fn=72, center=true);
+      rotate([0,90,0]) cylinder(r=hotend_r-v2_groove_depth, h=10.01, $fn=72, center=true);
       if (extraptor_v2) {
         // Hotend hole - Wider part, remove where the groove isn't
-        translate([-groove_height-merge_endspace,0,0]) {
+        translate([-v2_groove_height-v2_above_groove_mm,0,0]) {
           rotate([0,90,0]) cylinder(r=hotend_r, h=10.01, $fn=72, center=true);
         }
-        translate([5-merge_endspace/2,0,0])
-          rotate([0,90,0]) cylinder(r=hotend_r, h=merge_endspace, $fn=72, center=true);
+        translate([5-v2_above_groove_mm/2,0,0])
+          rotate([0,90,0]) cylinder(r=hotend_r, h=v2_above_groove_mm, $fn=72, center=true);
       }
       else {
-        translate([-groove_height,0,0]) {
+        translate([-v2_groove_height,0,0]) {
           rotate([0,90,0]) cylinder(r=hotend_r, h=10.01, $fn=72, center=true);
         }
       }
@@ -646,9 +714,145 @@ module prusa_adapter_clamp() {
 
 } // prusa_adapter_clamp
 
+/*
+  fan_duct
+  This mounts on the bottom fan screws
+*/
+module fan_duct(side=false) {
+  cylr = hole_3mm + 2.5;
+  ht1 = 1.5;
+  accel = 5;
+  detail = 6;
+
+  // Mount to bottom of fan
+  difference() {
+    // Fan bottom mount
+    rounded_cube([cylr*2,40+4.3*2,ht1], r=cylr-0.1, center=true);
+    // M3 Bolt holes
+    for (x=[-1,1]) translate([0,x*20,0]) cylinder(r=hole_3mm, h=ht1+0.05, center=true);
+    // Cut out the middle hole
+    translate([20,0,0]) cylinder(r=22,h=ht1+0.05, center=true);
+  }
+  translate([20,0,0]) {
+    difference() {
+      for (v=[0:13.4*detail],m=[-1,1]) assign(vv=v/detail) {
+        intersection() {
+          translate([vv/6,m*vv*(accel+1),vv*ht1]) hollow_cylinder(r1=23+vv*accel,r2=23+vv*accel-ht1,h=ht1, center=true);
+          translate([-4,-m*23,10]) {
+            intersection() {
+              cube([38,46,30], center=true);
+              translate([-5,0,-5]) rotate([0,-35,0]) cube([50,46,40], center=true);
+            }
+          }
+        }
+      }
+      // Remove area around hotend to clean up this part
+      translate([-24,0,18]) rotate([0,90-35,0]) cylinder(r=hotend_r*2-2, h=40, $fn=36, center=true);
+    }
+  }
+
+  // One side funnel, mirror both ways
+}
+
+/*
+  fan_sidemount
+  This mounts on the front screws but hangs the fan on the side
+*/
+module fan_sidemount() {
+  wide = clamp_hole_dist + 6;
+  cylr = hole_3mm + 2.5;
+  ht1 = 2.0;
+  ht2 = 3.1;
+  cylw = 25 - (ht2 + 2) * 2;
+
+  // Screw mounts exactly like the front mount
+  difference() {
+    union() {
+      // part that connects to the bolts
+      rounded_cube([10, wide + 2, ht1], r=4.9, center=true);
+      translate([0,wide/2-1,0]) {
+        cube([10, wide/2, ht1], r=4.9, center=true);
+        translate([0,2/2+4.5+1,30/2-ht1/2]) rotate([90,0,0]) {
+          cube([10, 30, ht1], r=4.9, center=true);
+          translate([0,13,0]) rounded_cube([10, 38-20, ht1], r=4.9, center=true);
+        }
+      }
+    }
+    for (x=[-1,1]) translate([0,x*clamp_hole_dist/2,0]) rotate([0,0,0]) cylinder(r=hole_3mm, h=ht1+0.1, center=true);
+  }
+}
+
+/*
+  fan_mount
+  This mounts on the front screws
+*/
+module fan_mount(mode=3) {
+  wide = clamp_hole_dist + 6;
+  cylr = hole_3mm + 2.5;
+  ht1 = 2.0;
+  ht2 = 3.1;
+  cylw = 25 - (ht2 + 2) * 2;
+  do_part1 = mode % 2;
+  do_part2 = mode > 1;
+
+  // Hinge for the Prusa
+  if (do_part1) difference() {
+    union() {
+      // part that connects to the bolts
+      rounded_cube([10, wide + 2, ht1], r=4.9, center=true);
+
+      // Extender
+      translate([-5,0,-2.3]) rotate([0,-72,0]) {
+        cube([6.2, cylw, ht1], center=true);
+        rotate([0,10,0]) cube([6.2, cylw, ht1], center=true);
+      }
+      translate([-6.3,0,-4.4]) rotate([0,-72+32,0]) cube([2, cylw, 2.5], center=true);
+      translate([-5.3,0,-4.4]) rotate([0,-20,0]) cube([2, cylw, 2], center=true);
+      translate([-6.5,0,-8]) rotate([90,0,0]) hollow_cylinder(r2=hole_3mm, r1=cylr, h=cylw, center=true);
+    }
+    for (x=[-1,1]) translate([0,x*clamp_hole_dist/2,0]) rotate([0,0,0]) cylinder(r=hole_3mm, h=ht1+0.1, center=true);
+  }
+
+  // Connect to the fan
+  if (do_part2) translate(draw_assembled ? [-11.4,0,-11.6] : [0,0,0]) {
+    rotate([0,35,0]) {
+      difference() {
+        union() {
+          rounded_cube([cylr*2,40+4.1*2,ht1], r=4.1, center=true);
+          for (x=[-1,1]) {
+            // translate([0,x*20,0]) cylinder(r=cylr, h=ht1, center=true);
+            translate([2,x*(cylw+ht2+0.4)/2,cylr+ht1/2+0.5]) {
+              rotate([90,0,0]) cylinder(r=cylr, h=ht2, center=true);
+              translate([-1,0,-cylr/2-1]) cube([cylr*2-2,ht2,cylr+2], center=true);
+            }
+          }
+        }
+        for (x=[-1,1]) {
+          translate([0,x*20,0]) cylinder(r=hole_3mm, h=ht2+0.1, center=true);
+          translate([2,x*(cylw+ht2+0.4)/2,cylr+ht1/2+0.5]) rotate([90,0,0]) {
+            cylinder(r=hole_3mm, h=ht2+0.1, center=true);
+            if (x==1 && ht2 > 3) translate([0,0,-ht2/2-0.1]) rotate([0,0,22.5]) cylinder(r=hole_3mm+1.5, h=1.5, $fn=6);
+          }
+        }
+      }
+      // Dummy fan
+      if (draw_assembled) translate([-20,0,-(12+ht1)/2]) %fan_dummy();
+    }
+  }
+
+}
+
 //
 // Utility Functions
 //
+
+module rounded_cube(size=[1,1,1], r=0, center=false) {
+  d = r * 2;
+  minkowski() {
+    cube([size[0]-d,size[1]-d,size[2]], center=center);
+    cylinder(r=r, h=0.01, center=true);
+  }
+}
 
 module bolt(r=1.5, h=15) {
   translate([0,0,-h/2]) {
@@ -694,4 +898,16 @@ module motor_dummy(){
     // Gear
     translate([0,0,gh/2+3]) color([1,0.75,0]) cylinder(r=gr, h=gh, $fn=36, center=true);
   }
+}
+
+module fan_dummy() {
+  difference() {
+    rounded_cube([50, 50, 12], r=2, center=true);
+    cylinder(r=22, h=12.1, center=true);
+    for(x=[-1,1],y=[-1,1],z=[-1,1]) translate([x*20,y*20,z*2-1]) cylinder(r=hole_3mm-z+1, h=12.1, center=true);
+  }
+
+  // if (draw_assembled)
+  //   for(x=[1],y=[-1,1]) translate([x*20,y*20,-4]) rotate([0,180,0]) bolt(h=15);
+
 }
