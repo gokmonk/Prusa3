@@ -33,7 +33,7 @@ module fan_duct(side=false) {
     difference() {
       for (v=[0:13.4*detail],m=[-1,1]) assign(vv=v/detail) {
         intersection() {
-          translate([vv/6,m*vv*(accel+1),vv*ht1]) hollow_cylinder(r1=23+vv*accel,r2=23+vv*accel-ht1,h=ht1, center=true);
+          translate([vv/6,m*vv*(accel+1.2),vv*ht1]) hollow_cylinder(r1=24.5+vv*accel,r2=24.5+vv*accel-ht1,h=ht1, center=true);
           translate([-4,-m*23,10]) {
             intersection() {
               cube([38,46,30], center=true);
@@ -43,10 +43,8 @@ module fan_duct(side=false) {
         }
       }
       // Remove area around hotend to clean up this part
-      translate([-24,0,18]) rotate([0,90-35,0]) cylinder(r=hotend_r*2-2, h=40, $fn=36, center=true);
+      translate([-24,0,18]) rotate([0,90-35,0]) cylinder(r=hotend_r*2-2, h=50, $fn=36, center=true);
     }
   }
-
-  // One side funnel, mirror both ways
 }
 

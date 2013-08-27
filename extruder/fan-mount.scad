@@ -47,7 +47,7 @@ module fan_mount(mode=3) {
   cylr = hole_3mm + 2.5;
   ht1 = 2.0;
   ht2 = 3.1;
-  cylw = 25 - (ht2 + 2) * 2;
+  cylw = 16 - (ht2 + 1) * 2;
   do_part1 = mode % 2;
   do_part2 = mode > 1;
 
@@ -64,7 +64,7 @@ module fan_mount(mode=3) {
       }
       translate([-6.3,0,-4.4]) rotate([0,-72+32,0]) cube([2, cylw, 2.5], center=true);
       translate([-5.3,0,-4.4]) rotate([0,-20,0]) cube([2, cylw, 2], center=true);
-      translate([-6.5,0,-8]) rotate([90,0,0]) hollow_cylinder(r2=hole_3mm, r1=cylr, h=cylw, center=true);
+      translate([-6.5,0,-8]) rotate([90,0,0]) hollow_cylinder(r2=hole_3mm, r1=cylr, h=cylw-0.2, center=true);
     }
     for (x=[-1,1]) translate([0,x*clamp_hole_dist/2,0]) rotate([0,0,0]) cylinder(r=hole_3mm, h=ht1+0.1, center=true);
   }

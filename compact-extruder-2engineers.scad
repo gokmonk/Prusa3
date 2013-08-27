@@ -21,7 +21,7 @@ include <extruder/fan-mount.scad>
 include <extruder/fan-duct.scad>
 
 // Draw assembled for easier development
-draw_assembled = true;
+draw_assembled = false;
 
 if (draw_assembled)
   translate([0,6.5,120]) rotate([0,-90,0]) draw_everything();
@@ -88,10 +88,19 @@ module draw_everything() {
           prusa_compact_adapter(mode = extraptor_v2 ? 2 : 1);
       }
       else {
-        translate([moffs-1,0,platform_height+ed-16]) {
-          %cube(1, center=true);
-          rotate([0,180,0])
-            prusa_compact_adapter(mode = extraptor_v2 ? 2 : 1);
+        if (do_high_mount) {
+          translate([platform_y_offset-36,37+(do_chop?5+filament_path_offset:0),ed-12-0.25]) {
+            %cube(1, center=true);
+            rotate([0,0,-90])
+              prusa_compact_adapter(mode = extraptor_v2 ? 2 : 1);
+          }
+        }
+        else {
+          translate([moffs-1,0,platform_height+ed-16]) {
+            %cube(1, center=true);
+            rotate([0,180,0])
+              prusa_compact_adapter(mode = extraptor_v2 ? 2 : 1);
+          }
         }
       }
     }
@@ -106,10 +115,11 @@ module draw_everything() {
         }
       }
       else {
-        translate(draw_extruder ? [-30,47,0] : [0, draw_idler ? 37 : 30,0]) {
+        // draw_extruder ? [-20,47,0] : [ioffs-30, draw_idler ? 37 : 30,0]
+        translate([ioffs-30, draw_idler ? 37 : 32, 0]) {
           %cube(1, center=true);
-          translate([0,12,1]) rotate([0,180,90]) fan_mount(mode=1);
-          translate([0,0,1]) rotate([0,-35,90]) fan_mount(mode=2);
+          translate([4,16,1]) rotate([0,180,180]) fan_mount(mode=1);
+          translate([15,16,1]) rotate([0,-35,0]) fan_mount(mode=2);
         }
       }
     }
@@ -141,7 +151,8 @@ module draw_everything() {
             fan_duct();
       }
       else {
-        translate([moffs-(draw_fan_mount&&draw_mount ? 15 : 25),draw_mount?50:10,0.75]) {
+        // [moffs-(draw_fan_mount&&draw_mount ? 15 : 25),draw_mount?50:10,0.75]
+        translate([ioffs,50,1.5/2]) {
           %cube(1, center=true);
           rotate([0,0,0]) fan_duct();
         }
@@ -161,7 +172,7 @@ module motor_dummy(){
   mw = 43.8;
   hd = 36.0;
   ax = 11.675; ay = 22.025;
-  gr = gear_radius/2;
+  gr = gear_diameter/2;
   gh = gear_height;
 
   // Flat Part

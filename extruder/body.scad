@@ -105,14 +105,31 @@ module extruder_holes() {
     translate([0,-2+motor_lowness,-1]) cylinder(r=8, h=26, $fn=36);
 
     // Motor mount holes
-    translate([-8.5,18-2+motor_lowness])
-      for (v=[[-1,hole_3mm,18],[ed-3,hole_3mm+1.5,6]], p=[[0,0],[0,-36],[36,0]])
-        translate([p[0],p[1],v[0]]) rotate([0,0,30]) cylinder(r=v[1], h=35, $fn=v[2]);
+    translate([-8.5,18-2+motor_lowness]) {
+      for (v=[[-1,hole_3mm,18],[ed-12.5,hole_3mm+1.4,6]], p=[[0,0,!do_high_mount],[0,-36,true]])
+        if (v[2]!=6||p[2]) {
+          translate([p[0],p[1],v[0]]) rotate([0,0,30]) cylinder(r=v[1], h=36, $fn=v[2]);
+        }
+        else {
+          // translate([p[0],p[1],v[0]]) rotate([0,0,30]) %cylinder(r=v[1], h=36, $fn=v[2]);
+        }
+    }
 
-    // Carriage mount holes
+    // Direct carriage mount holes, if enabled
     if (rear_mounting)
       for (x=[-12,12], v=[[-3,3.5],[20.5,2]])
         translate([x,24,v[0]]) cylinder(r=v[1], h=23);
+
+    // Top-rear mounting / tensioning hole
+    // This easily collides with motor mounting, so...
+    // ...use with side-screw mount so there's no front-clamp
+    // ...and the motor can mount 1mm lower, hopefully clearing!
+    if (sideways_clamp) {
+      translate([-6.5,19.1,ed/2]) {
+        cylinder(r=hole_3mm, h=ed+1, $fn=18, center=true);
+        translate([0,0,-ed/2-0.05]) cylinder(r=hole_3mm + 1.5, h=ed-10, $fn=18);
+      }
+    }
 
     // Idler bearing cutout
     translate([11,-2+motor_lowness,-4.5+10]) cylinder(r=11, h=20, $fn=64);
@@ -149,7 +166,8 @@ module extruder_holes() {
       // Screw cap inset on the front
       translate([0,0,(-ed+2.5)/2]) cylinder(r2=hole_3mm+1, r1=hole_3mm+2, h=2.51, center=true);
       // Nut trap inset on the back
-      translate([0,0,(ed-4)/2]) cylinder(r=hole_3mm+1.5, h=4.01, $fn=6, center=true);
+      if (!do_high_mount)
+        translate([0,0,(ed-4)/2]) cylinder(r=hole_3mm+1.5, h=4.01, $fn=6, center=true);
     }
   }
 
@@ -202,7 +220,7 @@ module extruder_supports() {
         translate([-4,-idler_hinge_radius+idler_hinge_radius,0]) cube([8,idler_hinge_radius*2,wall_length], center=true);
         // translate([2,4,0]) cube([idler_hinge_radius,idler_hinge_radius,wall_length], center=true);
       }
-      translate([-4,-idler_hinge_radius+support_wall/2,0]) cube([8,support_wall,wall_length], center=true);
+      translate([-4,-idler_hinge_radius+support_wall/2,0]) cube([4,support_wall,wall_length], center=true);
       translate([0,0,wall_length/2+0.15]) cylinder(r=idler_hinge_radius, h=0.3, center=true);
     }
   }

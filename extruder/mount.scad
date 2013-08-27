@@ -29,6 +29,7 @@
 module prusa_compact_adapter(mode=1) {
 
   mount_w = extraptor_v2 ? 48 : 50;
+  less_w = mount_w - (do_chop?4:0);
   mount_x = 16 + (platform_height - mount_length) / 2;
   mount_z = 12 + mount_thickness / 2;
   b_dist = (18 - (45 - mount_length) / 2);
@@ -45,8 +46,15 @@ module prusa_compact_adapter(mode=1) {
 
       // draw the back part
       if (do_back) {
-        translate([mount_x,0,mount_z]) {
-          rounded_cube([mount_length, mount_w-(do_chop?4:0), mount_thickness], r=corner_radius, center=true, $fn=36);
+        if (do_high_mount) {
+          translate([mount_x-3.5,-0.25,mount_z]) {
+            rounded_cube([mount_length-7, less_w-7.5, mount_thickness], r=corner_radius-2, center=true, $fn=36);
+            translate([5,-5,0]) cube([mount_length-7-10, less_w-7.5-10, mount_thickness], center=true);
+          }
+        }
+        else {
+          translate([mount_x,0,mount_z])
+            rounded_cube([mount_length, less_w, mount_thickness], r=corner_radius, center=true, $fn=36);
         }
       }
       if (do_platf && !extraptor_v2) {
@@ -56,11 +64,40 @@ module prusa_compact_adapter(mode=1) {
         }
       }
       // Top Screw Mount Plate
-      if (do_back) {
+      if (do_back) assign(topd=do_high_mount?6:3) {
         color([1,1,1])
-          translate([42/2,-12,mount_z+(mount_thickness-3)/2]) {
-            cylinder(r=hole_3mm+5, h=3, center=true);
+          translate([mount_x - b_dist + 36,-12,mount_z+(mount_thickness-topd)/2]) {
+            if (do_high_mount) {
+              hull() {
+                cylinder(r2=hole_3mm+1.5, r1=hole_3mm+4.5, h=topd, center=true);
+                translate([-8,8.6,0]) cube([1,(hole_3mm+4.6)*2+17.3,topd], center=true);
+              }
+            }
+            else
+              cylinder(r=hole_3mm+5, h=topd, center=true);
           }
+
+        // Connection for the high connected mount
+        if (do_high_mount) {
+          // (mount_w-(do_chop?4:0)-4-8)/2
+          translate([mount_x,0,mount_z]) intersection() {
+            translate([-mount_length/4,-0.25,-mount_thickness/2-ed/2]) {
+              for (y=[-1,1]) intersection() {
+                translate([6.5,0,0]) rounded_cube([mount_length-7, less_w-7.5, ed], r=corner_radius-2, center=true, $fn=36);
+                translate([0,y*13.5,0]) cube([mount_length/2+5,9,ed], center=true);
+              }
+            }
+            union() {
+              translate([0,0,-3.5])
+                rotate([0,30,0])
+                  cube([38,less_w,18], center=true);
+              translate([5,0,-9.5])
+                rotate([0,65,0])
+                  cube([28,less_w,18], center=true);
+            }
+          }
+        }
+
       }
 
     } // union
@@ -109,12 +146,26 @@ module prusa_compact_adapter(mode=1) {
       } // do_platf
 
       // Front-to-back long mounting holes & traps
-      translate([ (extraptor_v2 ? v2_merge_amount - (do_back ? platform_y_offset : 0) : -platform_y_offset),
-                  platform_height/2+filament_path_offset-(do_chop&&mode==2?5+filament_path_offset:0),
-                  5]) {
-        for (y=[-1,1]) {
-          translate([0,y*clamp_hole_dist/2,0]) cylinder(r=hole_3mm, h=ed+platform_height+0.02, $fn=12, center=true);
-          translate([0,y*clamp_hole_dist/2,(ed+platform_height)/2-3.5-2.2]) cylinder(r=hole_3mm+1.5, h=3.51, $fn=12, center=true);
+      if (do_high_mount) {
+        // Make holes and traps for front-mounting on the v2 extruder
+        // ...keeping the clamp but without any rear mount through-holes.
+        translate([ (extraptor_v2 ? v2_merge_amount - (do_back ? platform_y_offset : 0) : -platform_y_offset),
+                    platform_height/2+filament_path_offset-(do_chop&&mode==2?5+filament_path_offset:0),
+                    5]) {
+          for (y=[-1,1]) {
+            translate([0,y*clamp_hole_dist/2,0]) cylinder(r=hole_3mm, h=ed+platform_height+0.02, $fn=12, center=true);
+            translate([0,y*clamp_hole_dist/2,(ed+platform_height)/2-3.5-2.2]) cylinder(r=hole_3mm+1.5, h=40, $fn=6, center=true);
+          }
+        }
+      }
+      else {
+        translate([ (extraptor_v2 ? v2_merge_amount - (do_back ? platform_y_offset : 0) : -platform_y_offset),
+                    platform_height/2+filament_path_offset-(do_chop&&mode==2?5+filament_path_offset:0),
+                    5]) {
+          for (y=[-1,1]) {
+            translate([0,y*clamp_hole_dist/2,0]) cylinder(r=hole_3mm, h=ed+platform_height+0.02, $fn=12, center=true);
+            translate([0,y*clamp_hole_dist/2,(ed+platform_height)/2-3.5-2.2]) cylinder(r=hole_3mm+1.5, h=3.51, $fn=12, center=true);
+          }
         }
       }
 
@@ -122,20 +173,25 @@ module prusa_compact_adapter(mode=1) {
 
         // Mount Screw Holes
         for (x=(rear_mounting ? [-1,1] : [-1]), y=[-1,1]) {
-          translate([mount_x + b_dist * x, 12 * y, mount_z]) {
+          translate([mount_x + b_dist * x, 12 * y, mount_z - (do_high_mount ? mount_thickness/2 : 0)]) {
             cylinder(r=hole_3mm, h=mount_thickness+1, $fn=12, center=true);
-            translate([0,0,x*mount_thickness/2]) cylinder(r=hole_3mm + 1.75, h=4, $fn=18, center=true);
+            translate([0,0,x*mount_thickness/2]) {
+              cylinder(r=hole_3mm + 1.75, h=8, $fn=18, center=true);
+              if (do_high_mount) translate([-4,0,0]) cube([2*(hole_3mm+1.75),mount_thickness+1,8], center=true);
+            }
           }
         }
         // Top screw hole
-        translate([42/2,-12,mount_z]) {
+        translate([mount_x - b_dist + 36,-12,mount_z]) {
           cylinder(r=hole_3mm, h=mount_thickness+1, $fn=12, center=true);
-          translate([0,0,-mount_thickness/2]) cylinder(r=hole_3mm+2.5, h=6, $fn=18, center=true);
+          if (!do_high_mount)
+            translate([0,0,-mount_thickness/2]) cylinder(r=hole_3mm+2.5, h=6, $fn=18, center=true);
         }
-        // // Save material
+        // Save material
         translate([(extraptor_v2 ? -8 : -16)-platform_y_offset,0,15]) {
-          cube([22.01,12,mount_thickness+1], center=true);
-          for (y=[-1,1]) translate([-1,y*15,-mount_thickness/2]) rotate([y*275,0,0]) cube([22,3,22],center=true);
+          cube([22.01, do_high_mount?18:12, mount_thickness+20], center=true);
+          if (!do_high_mount)
+            for (y=[-1,1]) translate([-1,y*15,-mount_thickness/2]) rotate([y*278,0,0]) cube([22,5,22],center=true);
         }
 
       } // do_back
